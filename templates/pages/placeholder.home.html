@@ -6,54 +6,89 @@
   <h1>Sticky footer with fixed navbar</h1>
 </div>
 <p class="lead">Pin a fixed-height footer to the bottom of the viewport in desktop browsers with this custom HTML and CSS. A fixed navbar has been added within <code>#wrap</code> with <code>padding-top: 60px;</code> on the <code>.container</code>.</p>
-<form
-  id="search-form"
-  action="/search"
-  method="post"
->
+<form id="search-form" action="/search" method="post">
 
   <label>
     Search<br>
-    <input type="text" name="search-form">
+    <input type="text" name="menu_item">
   </label>
+
     <label>
     <input type="text" name="zip_code">
   </label>
 
   <input type="submit" name="commit" value="Search!">
 </form>
-<div id='map' style='width: 500px'></div>
 
-{{ restaraunts }}
+<div id='map' style='width: 500px; height: 500px'></div>
+
 {% endblock %}
 
 {% block footer %}
+<script type="text/template" id="info-window">
+  <h5><%= restaurant.name %> at <%= restaurant.venue.name %></h5>
+  <h6>Price: <%= restaurant.price %></h6>
+  <h6><%= restaurant.description %></h6>
+</script>
+
 <script type="text/javascript">
 
-function initialize() {
+function initialize(restaurants) {
   var mapOptions = {
-    zoom: 8,
-    center: new google.maps.LatLng(40.7678605,-73.9585667)
+    zoom: 8
   };
 
-  var map = new google.maps.Map(document.getElementById('map'),
-      mapOptions);
-      console.log('meow')
+  var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+  var markers = [];
+  var infowindow = new google.maps.InfoWindow();
+  var parsedRestaurants = JSON.parse(restaurants);
+
+  for (var i=0; i < parsedRestaurants.length; i++){
+    var restaurant = parsedRestaurants[i];
+    console.log(restaurant);
+    var latlng = new google.maps.LatLng(restaurant.venue.lat, restaurant.venue.long);
+         
+    var marker = new google.maps.Marker({
+        position: latlng,
+        map: map,
+        title: restaurant.name + ' at ' + restaurant.venue.name
+    });
+
+    google.maps.event.addListener(marker, 'click', (function(marker, rest) {
+        return function() {
+          infowindow.setContent(_.template($("#info-window").html(), {restaurant: rest} ));
+          infowindow.open(map, marker);
+        }
+      })(marker, restaurant));
+
+    markers.push(marker);
+
+  }
+
+  function AutoCenter() {
+      //  Create a new viewpoint bound
+      var bounds = new google.maps.LatLngBounds();
+      //  Go through each...
+      $.each(markers, function (index, marker) {
+        bounds.extend(marker.position);
+      });
+      //  Fit these bounds to the map
+      map.fitBounds(bounds);
+    }
+    AutoCenter();
 }
 
 $('#search-form').submit(function(event){
   event.preventDefault();
   var $form = $(this);
-  console.log('stugg')
 
   $.ajax({
     url: '/search',
     type: 'POST',
     data: $form.serialize(),
     success: function(data){
-      console.log(data)
-
-      initialize()
+      initialize(data)
     }
   })
 

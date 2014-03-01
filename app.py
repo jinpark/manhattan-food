@@ -8,8 +8,11 @@ import logging
 from logging import Formatter, FileHandler
 from forms import *
 
+from flask.ext.googlemaps import GoogleMaps
 import requests
 import urllib
+import json
+
 import apikey
 
 from werkzeug.contrib.cache import SimpleCache
@@ -21,6 +24,7 @@ cache = SimpleCache()
 app = Flask(__name__)
 app.config.from_object('config')
 #db = SQLAlchemy(app)
+GoogleMaps(app)
 
 # Automatically tear down SQLAlchemy.
 '''
@@ -77,21 +81,22 @@ def forgot():
 @app.route('/search', methods=['POST'])
 def search():
     if request.method == 'POST':
-        menu_item = request.form['search']
+        print request.form
+        menu_item = request.form['menu_item']
         zip_code = request.form['zip_code']
-        return jsonify(search_restaraunts(zip_code, menu_item))
+        return json.dumps(search_restaraunts(zip_code, menu_item))
 
 def search_restaraunts(zip_code, menu_item):
     encoded_menu_item = urllib.quote(menu_item)
     restaraunts = cache.get(menu_item)
     if not restaraunts:
+        print 'cache miss'
         restaraunts = []
         payload = {'api_key': LOCU_API, 'region': 'NY', 'postal_code' : str(zip_code), 'name' : encoded_menu_item}
         r = requests.get("https://api.locu.com/v1_0/menu_item/search/", params=payload)
         for restaraunt in r.json()['objects']:
             restaraunts.append(restaraunt)
-        cache.set(menu_item, restaraunts, timeout=60 * 50 * 24 * 7)
-    return restaraunts
+        cache.set(menu_item, restaraunts, timeout=60 * 60 * 24 * 7)
 
     # if restaraunts is None:
     #     restaraunts = {}
@@ -103,7 +108,6 @@ def search_restaraunts(zip_code, menu_item):
     #     cache.set(menu_item, restaraunts)
 
     return restaraunts
-
 
 # Error handlers.
 
