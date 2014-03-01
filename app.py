@@ -89,7 +89,7 @@ def search():
 
 def search_restaraunts(zip_code, menu_item):
     encoded_menu_item = urllib.quote(menu_item)
-    restaurants = cache.get(menu_item)
+    restaurants = cache.get(str(zip_code) + str(menu_item))
     if not restaurants:
         print 'cache miss'
         restaurants = []
@@ -98,7 +98,8 @@ def search_restaraunts(zip_code, menu_item):
         for restaurant in r.json()['objects']:
             restaurants.append(restaurant)
         restaurants = sorted(restaurants,key=itemgetter('price'))
-        cache.set(menu_item, restaurants, timeout=60 * 60 * 24 * 7)
+        cache.set(str(zip_code) + str(menu_item), restaurants, timeout=60 * 60 * 24 * 7)
+    print restaurants
     return restaurants
 
 # Error handlers.
