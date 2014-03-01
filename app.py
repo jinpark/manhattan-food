@@ -12,6 +12,7 @@ from flask.ext.googlemaps import GoogleMaps
 import requests
 import urllib
 import json
+from operator import itemgetter, attrgetter
 
 import apikey
 
@@ -88,26 +89,17 @@ def search():
 
 def search_restaraunts(zip_code, menu_item):
     encoded_menu_item = urllib.quote(menu_item)
-    restaraunts = cache.get(menu_item)
-    if not restaraunts:
+    restaurants = cache.get(menu_item)
+    if not restaurants:
         print 'cache miss'
-        restaraunts = []
+        restaurants = []
         payload = {'api_key': LOCU_API, 'region': 'NY', 'postal_code' : str(zip_code), 'name' : encoded_menu_item}
         r = requests.get("https://api.locu.com/v1_0/menu_item/search/", params=payload)
-        for restaraunt in r.json()['objects']:
-            restaraunts.append(restaraunt)
-        cache.set(menu_item, restaraunts, timeout=60 * 60 * 24 * 7)
-
-    # if restaraunts is None:
-    #     restaraunts = {}
-    #     for zip_code in MANHATTAN_ZIP_CODES:
-    #         payload = {'api_key': LOCU_API, 'region': 'NY', 'postal_code' : str(zip_code), 'name' : encoded_menu_item}
-    #         r = requests.get("https://api.locu.com/v1_0/menu_item/search/", params=payload)
-    #         for restaraunt in r.json()['objects']:
-    #             restaraunts.setdefault(zip_code, []).append(restaraunt)
-    #     cache.set(menu_item, restaraunts)
-
-    return restaraunts
+        for restaurant in r.json()['objects']:
+            restaurants.append(restaurant)
+        restaurants = sorted(restaurants,key=itemgetter('price'))
+        cache.set(menu_item, restaurants, timeout=60 * 60 * 24 * 7)
+    return restaurants
 
 # Error handlers.
 
